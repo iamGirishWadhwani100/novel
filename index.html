@@ -1,253 +1,776 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Devil Danger - An Interactive Story</title>
+    <title>Echo of the Dragon King - An Interactive Story</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Lora:ital,wght@0,400;0,700&display=swap" rel="stylesheet">
-    <!-- Chosen Palette: Cosmic Dark -->
-    <!-- Application Structure Plan: A single-page interactive dashboard. The main navigation allows users to explore the story via a Plot Timeline, Character Profiles, and a guide to the Legendary Crystals. This non-linear structure is chosen to encourage exploration and deeper engagement with the story's lore and characters, rather than a simple passive reading experience. The timeline provides the core narrative, while other sections offer context on demand. -->
-    <!-- Visualization & Content Choices: Plot -> Goal:Change -> Interactive Timeline (HTML/CSS/JS) -> User clicks to reveal chapter summaries. Characters -> Goal:Inform -> Clickable Cards (HTML/CSS/JS) -> Displays character bios and roles. Lore (Crystals) -> Goal:Organize -> Interactive Icons (HTML/CSS/JS) -> Shows details of each crystal. This approach breaks the novel down into its core components, making the information digestible and interactive. -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Cinzel:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Calm Harmony (Slate neutrals with Indigo accent) -->
+    <!-- Application Structure Plan: The SPA uses a thematic, non-linear structure with a top navigation bar linking to distinct sections for Story, Characters, Worlds, and Legendary Crystals. This design allows users to explore the lore and narrative in any order they prefer, which is more engaging for a fictional universe than a simple linear text document. Interactions are centered on click-to-reveal panels for characters, chapters, and items, keeping the initial view clean and preventing information overload. -->
+    <!-- Visualization & Content Choices: Story -> Goal: Organize -> Method: Click-to-expand vertical timeline -> Interaction: JS toggle visibility -> Justification: Breaks up a long text into manageable chunks. Characters/Worlds/Crystals -> Goal: Inform/Organize -> Method: Interactive Grid/Flexbox Gallery -> Interaction: JS updates a shared detail panel on click -> Justification: Provides a clean, visual index for exploring key entities without cluttering the page. All visual diagrams are built with structured HTML and Tailwind CSS. -->
     <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
     <style>
         body {
-            font-family: 'Lora', serif;
-            background-color: #f3f4f6;
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
         }
-        .font-cinzel {
+        h1, h2, h3, .font-cinzel {
             font-family: 'Cinzel', serif;
         }
-        .active-nav {
-            color: #a855f7;
-            border-bottom-color: #a855f7;
-            font-weight: 700;
+        .font-cinzel-decorative {
+            font-family: 'Cinzel Decorative', cursive;
         }
-        .content-section {
+        .active-nav {
+            color: #4f46e5;
+            border-bottom-color: #4f46e5;
+        }
+        .active-card {
+            border-color: #4f46e5 !important;
+            box-shadow: 0 4px 14px 0 rgba(79, 70, 229, 0.2);
+            transform: translateY(-4px);
+        }
+        section {
             display: none;
         }
-        .content-section.active {
+        section.active {
             display: block;
         }
-        .timeline-item {
-            cursor: pointer;
-            transition: all 0.3s ease;
+        .details-panel {
+            transition: opacity 0.3s ease-in-out;
         }
-        .timeline-item.active {
-            background-color: #a855f7;
-            color: white;
+        .details-panel.loading {
+            opacity: 0;
+        }
+        .chapter-content {
+            transition: max-height 0.7s ease-in-out, opacity 0.5s ease-in-out, padding 0.5s ease-in-out;
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+            padding-top: 0;
+            padding-bottom: 0;
+        }
+        .chapter-content.open {
+            max-height: 5000px; /* Large enough for content */
+            opacity: 1;
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+        }
+        .chapter-toggle .icon-span {
+            transition: transform 0.5s ease;
+        }
+        .chapter-toggle.open .icon-span {
+             transform: rotate(45deg);
+        }
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+        .reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .crystal-selector div {
+            transition: transform 0.3s ease;
+        }
+        .crystal-selector:hover div {
             transform: scale(1.1);
         }
-        .character-card, .crystal-card {
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        .character-card:hover, .crystal-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        .world-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
         }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body class="bg-slate-100 text-slate-700 antialiased">
 
-    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
-
-        <!-- Header -->
-        <header class="text-center mb-8">
-            <h1 class="font-cinzel text-4xl md:text-6xl font-bold text-gray-900">DEVIL DANGER</h1>
-            <p class="text-lg text-gray-600 mt-2">An Interactive Story Experience</p>
-        </header>
-
-        <!-- Navigation -->
-        <nav class="flex justify-center border-b-2 border-gray-200 mb-8">
-            <button data-target="timeline" class="nav-link active-nav text-lg py-4 px-6 border-b-2 border-transparent transition-colors duration-300">Story Timeline</button>
-            <button data-target="characters" class="nav-link text-lg py-4 px-6 border-b-2 border-transparent transition-colors duration-300">Key Characters</button>
-            <button data-target="crystals" class="nav-link text-lg py-4 px-6 border-b-2 border-transparent transition-colors duration-300">Legendary Crystals</button>
-        </nav>
-
-        <main>
-            <!-- Story Timeline Section -->
-            <section id="timeline" class="content-section active">
-                <div class="text-center mb-8">
-                    <h2 class="font-cinzel text-3xl font-bold">The Conqueror's Journey</h2>
-                    <p class="text-gray-600 mt-2">Follow the main plot of the story from beginning to end. Click on any chapter to read it.</p>
+    <!-- Header & Navigation -->
+    <header class="bg-white/80 backdrop-blur-lg sticky top-0 z-50 border-b border-slate-200">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex-shrink-0">
+                    <h1 class="font-cinzel-decorative text-xl md:text-2xl font-bold text-slate-900 tracking-wider">Echo of the Dragon King</h1>
                 </div>
-                <div class="flex items-center justify-center mb-8 overflow-x-auto pb-4">
-                    <div class="flex space-x-4 md:space-x-8">
-                        <!-- Timeline items will be generated by JS -->
+                <nav class="hidden md:flex md:space-x-8">
+                    <a href="#story" class="nav-link font-semibold text-slate-600 hover:text-indigo-600 border-b-2 border-transparent transition-colors duration-300">Story</a>
+                    <a href="#characters" class="nav-link font-semibold text-slate-600 hover:text-indigo-600 border-b-2 border-transparent transition-colors duration-300">Characters</a>
+                    <a href="#worlds" class="nav-link font-semibold text-slate-600 hover:text-indigo-600 border-b-2 border-transparent transition-colors duration-300">Worlds</a>
+                    <a href="#crystals" class="nav-link font-semibold text-slate-600 hover:text-indigo-600 border-b-2 border-transparent transition-colors duration-300">Crystals</a>
+                </nav>
+                <div class="md:hidden">
+                    <select id="mobile-nav" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        <option value="story">Story</option>
+                        <option value="characters">Characters</option>
+                        <option value="worlds">Worlds</option>
+                        <option value="crystals">Crystals</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+
+        <!-- Story Section -->
+        <section id="story" class="active">
+            <div class="text-center mb-12 reveal">
+                <h2 class="text-3xl md:text-4xl font-bold text-slate-900">The Chronicle of the Covenant</h2>
+                <p class="mt-4 text-lg text-slate-500 max-w-3xl mx-auto">An age of peace is shattered by a new threat, forcing the heirs of legendary founders to confront a forgotten pact and a choice that will shape the multiverse forever.</p>
+            </div>
+            <div id="story-content" class="space-y-6 max-w-4xl mx-auto">
+                <!-- Chapters will be injected here by JS -->
+            </div>
+        </section>
+
+        <!-- Characters Section -->
+        <section id="characters">
+            <div class="text-center mb-12 reveal">
+                <h2 class="text-3xl md:text-4xl font-bold text-slate-900">Figures of Fate</h2>
+                <p class="mt-4 text-lg text-slate-500 max-w-3xl mx-auto">Click on a character to learn about their history, their power, and the role they play in the coming storm.</p>
+            </div>
+            <div class="lg:grid lg:grid-cols-3 lg:gap-8 reveal">
+                <div class="lg:col-span-1 space-y-4">
+                    <div id="character-list" class="space-y-4">
+                        <!-- Character list will be injected here by JS -->
                     </div>
                 </div>
-                <div id="timeline-display" class="bg-white p-6 md:p-8 rounded-xl shadow-lg min-h-[400px] transition-opacity duration-500">
-                    <!-- Full chapter text will be displayed here -->
+                <div class="lg:col-span-2 mt-8 lg:mt-0">
+                    <div id="character-details" class="details-panel bg-white p-6 rounded-lg shadow-lg border border-slate-200 sticky top-24 min-h-[300px] flex items-center justify-center">
+                        <p class="text-center text-slate-500">Select a character to view their profile.</p>
+                    </div>
                 </div>
-            </section>
+            </div>
+        </section>
 
-            <!-- Characters Section -->
-            <section id="characters" class="content-section">
-                <div class="text-center mb-8">
-                    <h2 class="font-cinzel text-3xl font-bold">Figures of Fate</h2>
-                    <p class="text-gray-600 mt-2">Learn more about the main characters shaping the destiny of the multiverse.</p>
+        <!-- Worlds Section -->
+        <section id="worlds">
+            <div class="text-center mb-12 reveal">
+                <h2 class="text-3xl md:text-4xl font-bold text-slate-900">Realms of the Multiverse</h2>
+                <p class="mt-4 text-lg text-slate-500 max-w-3xl mx-auto">Explore the personal realms of the founders and other key locations that shape this cosmic tale.</p>
+            </div>
+             <div id="worlds-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Worlds will be injected here by JS -->
+             </div>
+        </section>
+
+        <!-- Legendary Crystals Section -->
+        <section id="crystals">
+            <div class="text-center mb-12 reveal">
+                <h2 class="text-3xl md:text-4xl font-bold text-slate-900">Artifacts of Power</h2>
+                <p class="mt-4 text-lg text-slate-500 max-w-3xl mx-auto">Discover the Six Legendary Crystals, objects of immense power that can reshape reality itself.</p>
+            </div>
+            <div class="flex flex-col items-center reveal">
+                <div id="crystal-selectors" class="flex flex-wrap justify-center gap-4 mb-8">
+                    <!-- Crystal selectors injected here -->
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" id="character-cards">
-                    <!-- Character cards will be generated by JS -->
+                <div id="crystal-details" class="details-panel bg-white p-6 rounded-lg shadow-lg border border-slate-200 w-full max-w-2xl min-h-[150px] flex items-center justify-center">
+                       <p class="text-center text-slate-500">Select a crystal to learn about its properties.</p>
                 </div>
-                <div id="character-display" class="bg-white p-6 md:p-8 rounded-xl shadow-lg min-h-[300px] transition-opacity duration-500">
-                    <p class="text-center text-gray-500">Select a character to view their profile.</p>
+            </div>
+        </section>
+
+    </main>
+    
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    let storyData = [
+        {
+            title: "Chapter 1: The Founders' Pact",
+            content: `
+                <p>Before time was measured, when the ink of the void was still wet with creation, a thought took form: that the greatest powers of the multiverse, often at odds, could achieve more together than they ever could apart. From this singular idea, the Covenant Hall was born—not in a place, but between places, anchored to reality only by the sheer will of its creators.</p>
+                <p>It was not built by hands, but by essence. Seven legendary figures, the First Founders of their domains, poured a fragment of their being into its foundation.</p>
+                <p><strong>Albus Dumbledore</strong>, the Archmage Primus, wove the very laws of magic into its walls, ensuring no spell could be cast within its chambers except by unanimous consent. The air itself thrums with a silent, arcane power.</p>
+                <p><strong>Godric</strong>, the Gem-Seer, laid the very floor of the Hall, a single, flawless pane of crystal that hums in harmony with the multiverse. But his greatest work lay beyond. He was the architect of a world seeded with gems of immense magical properties, which he named <strong>Veritas Lumen</strong>. From its heart, he forged his masterpieces: the <strong>Six Legendary Crystals of the Multiverse</strong>. He scattered them, warning that if any one being gathered all six, they could conquer universes and even kill the immortal ones.</p>
+                <p><strong>Alexander</strong>, the Sword-Father, forged the great, circular table from a fallen star with his own legendary sword. Upon its surface, he carved the symbols of a thousand warrior codes, binding all who sat there to a pact of non-aggression.</p>
+                <p><strong>Esther</strong>, the World-Speaker, gifted the Hall with a piece of her soul. A true Omnilingual, she ensured that all who enter understand and are understood perfectly, their true intent laid bare.</p>
+                <p><strong>Argent</strong>, the Unifier, the first true Emperor of a thousand systems, provided the structure. He gave the Hall its purpose and its laws: a sanctuary for dialogue, a council for the eternal cause of cosmic balance.</p>
+                <p><strong>Freya</strong>, the Star-Spinner, wove the ceiling from starlight and nebulae. It is a living star chart, shifting to show the state of the multiverse in real-time.</p>
+                <p>And finally, <strong>Lucifer</strong>, the Shadow-Carver, carved the great obsidian doors. The doors would only open to those who came with a purpose that affected the whole of existence.</p>
+                <p>Together, they created a neutral ground to decide the fate of all. The Hall has stood for eons, silent and waiting. The echoes of its creators linger. And now, for the first time in a millennium, the great obsidian doors have begun to tremble. A crisis is coming. A summons is about to be issued.</p>
+            `
+        },
+        {
+            title: "Chapter 2: A Generation of Rulers",
+            content: `
+                <p>Eons passed. The First Founders, their mortal forms surrendered to the streams of time, became legends. Their descendants, inheriting fractions of their power, carved out their own empires across the vastness of creation. This new generation of rulers governed in a long, prosperous peace, the pact of the Covenant Hall all but forgotten—a story told to children. The great obsidian doors remained sealed, their purpose fading from memory.</p>
+                <p>The seven domains were ruled by the heirs of the creators' blood:</p>
+                <p>In the Arcane Sanctum, <strong>High Lord Remus</strong>, son of Dumbledore, commanded the flows of magic. A reclusive academic, he saw magic as a science to be understood, not an art to be wielded. His rule was one of logic and cold order.</p>
+                <p>On the Warrior's Moon, <strong>High Lord Derek</strong>, son of Alexander, upheld a strict code of martial honor. A master swordsman, he was a proud and rigid ruler, settling all disputes through ritual combat.</p>
+                <p>At the Diplomatic Heart of the Core Systems, <strong>High Lord Elijah</strong>, son of Esther, masterfully negotiated the treaties of a thousand worlds. Impossibly charismatic, he was a cunning politician who used his omnilingual gift to maintain a delicate and intricate web of alliances.</p>
+                <p>From the Throne of the Unifier's Thousand Systems, <strong>High Lord Stiles</strong>, son of Argent, managed a sprawling and stable empire. A weary pragmatist, he was burdened by the immense weight of bureaucracy required to hold his father's legacy together.</p>
+                <p>Within the Star-Tapestry of the Celestial Spire, <strong>High Lady Hope</strong>, daughter of Freya, read the future in the cosmic dance of galaxies. The constant flood of branching timelines made her quiet and cryptic, a fatalistic seer who understood the terrible weight of every choice. Alone among the new rulers, she secretly admired the grim work of Damon, seeing the necessity of the darkness he contained. This secret understanding had blossomed into a hidden, unrequited love for the lord of the Shadowed Realm.</p>
+                <p>In the Obsidian Citadel of the Shadowed Realm, <strong>High Lord Damon</strong>, son of Lucifer, commanded the secrets that moved in the darkness. He was not evil, but a grim warden who accepted the thankless job of keeping the multiverse's most dangerous truths contained.</p>
+                <p>And on the luminous <strong>Veritas Lumen</strong>, <strong>High Lord Cedric</strong>, son of Godric, shaped the very light and energy of his world, a beacon of prosperity for all.</p>
+                <p>For centuries, this was the order of things. A delicate, unspoken balance held the multiverse together.</p>
+                <p>Until now.</p>
+                <p>The silence of ages was not broken by a tremor, but by a scream that echoed across the psychic foundations of reality. It was the death of a world.</p>
+                <p>From a corner of reality so remote it was not mapped on any star chart, a savage force had emerged. Rumors, carried on solar winds and whispered between dimensions, spoke of a conqueror from a new, unknown world. They called him <strong>Devil Danger</strong>, and through his sudden, violent appearance, the multiverse learned the name of his home for the first time: <strong>Dino World</strong>. Its exact location remained a complete mystery.</p>
+                <p>His first act on the cosmic stage was one of unimaginable heresy. He laid siege to <strong>Veritas Lumen</strong>. The battle was short and brutal. The planet, a beacon of light and magic, was shattered into a billion glittering pieces. Its ruler, Cedric, was killed in the assault. The whispers grew darker, suggesting Devil Danger had annihilated the entire bloodline.</p>
+                <p>This was not a creeping blight; it was a declaration of war against the old order.</p>
+                <p>The sacrilege was so profound, it forced the Covenant Hall from its slumber. Inside its chambers, the celestial ceiling spun by Freya showed the brilliant star of Veritas Lumen flicker and die. An empty space, a wound in the fabric of reality, now sat in its place.</p>
+                <p>The obsidian doors, carved by Lucifer, groaned open not with a sense of purpose, but with a sound of mourning and cold fury. The Hall itself, a sentient bastion of cosmic law, had been violated by the murder of a founder's heir.</p>
+                <p>A psychic call, sharp with urgency and loss, went out to the bloodlines of the six remaining creators. In six different corners of reality, the new rulers felt a sudden, horrifying emptiness—a ghostly shockwave, followed by an undeniable pull.</p>
+                <p>They were being summoned to a place of myth, not to prevent a crisis, but to answer one that had already begun. The great table, forged from a fallen star, now had an empty seat. The Hall waited for a new, fractured council to assemble in the shadow of Devil Danger.</p>
+            `
+        },
+        {
+            title: "Chapter 3: The Usurper's Throne",
+            content: `
+                <p>One by one, they arrived. Six figures, stepping through portals of shimmering magic, hardened light, and swirling shadow. They were strangers to one another, their empires separated by gulfs of space and ideology. The psychic summons had been an undeniable shock, but seeing the Covenant Hall in person was a violation of myth itself.</p>
+                <p>The air was heavy with a sorrow that seemed to emanate from the crystal floor. Above them, the wound in the star-spun ceiling where Cedric's world had once shone was a gaping black hole. They gathered around the great table, their eyes fixed on the seventh, empty seat—a monument to their fallen peer.</p>
+                <p>High Lord Derek, his hand resting on the hilt of his sword, was the first to break the silence. "This is an act of war. The murderer of Cedric must answer for it."</p>
+                <p>Before anyone could reply, the great obsidian doors boomed open. A figure stood silhouetted against the void, radiating an aura of raw, untamed power that felt alien to the Hall's ancient balance. He was clad in savage armor, and his eyes burned with primal fire.</p>
+                <p>It was Devil Danger.</p>
+                <p>He strode into the hall, his steps echoing with arrogant confidence. He ignored the stunned and furious glares of the rulers, his gaze fixed on the empty chair. With a smirk, he walked directly to it.</p>
+                <p>"I see you've saved me a spot," he rumbled, his voice like grinding stone. "Now there is one seat left. For me." He sat down in Cedric’s throne, a conqueror claiming his spoil.</p>
+                <p>The audacity of the act left the council speechless. It was Elijah, the diplomat, who found his voice first, his usual charm replaced with ice. "You dare defile this sacred place with the blood of a High Lord on your hands?"</p>
+                <p>Devil Danger leaned back, completely at ease. "I heard there was a rebellion being planned against me. You guys don't know anything about that, do you?" His eyes scanned each of them, a predator sizing up its prey. He didn't wait for an answer. He raised a hand, and a ball of crackling, chaotic energy formed in his palm.</p>
+                <p>He unleashed it not at them, but at the very air. A cosmic blast of purple and black energy erupted in the center of the room. The entire Covenant Hall, a structure that existed outside of normal reality, shook to its core. The crystal floor cracked, and the stars on the ceiling flickered violently. The display was terrifyingly clear: he was powerful enough to wound a place built by gods.</p>
+                <p>As the aftershock faded, a figure materialized from the shadows behind Devil Danger's new throne, moving with a silence that none of the assembled monarchs had detected. It was his brother, Michael. He leaned in close, his voice a frantic whisper only Devil Danger could hear.</p>
+                <p>"Brother, don't do this. There are other powers at play. There's someone... something... upon us who can destroy everything. Us, our world, all of it. Please, be aware."</p>
+            `
+        },
+        {
+            title: "Chapter 4: The Angel's Decree",
+            content: `
+                <p>Far away, shrouded by the very shadows that clung to the corners of the great hall, a lone figure watched the confrontation unfold. Hidden from every gaze, she saw the raw power Devil Danger wielded, and the fear in his brother’s eyes. She whispered into the silence, her voice a breath of sorrow. "Michael is right, Devil Danger. There is a threat upon you, upon your world. My love, you should escape. The Angel of Death is coming to kill you."</p>
+                <p>As if summoned by her words, the obsidian doors at the far end of the hall didn't just open—they exploded inward, shattering into a million sharp fragments that harmlessly dissolved before reaching the occupants.</p>
+                <p>A new figure stood in the ruined entryway. Her form was ethereal, radiating an unnerving calm that was more terrifying than any rage. The Angel of Death had arrived.</p>
+                <p>"Oops," she said, her voice a soft, melodic chime that echoed with absolute power. "I knocked a little too hard, I guess."</p>
+                <p>She glided into the room, her presence silencing all thought. The six High Lords and Ladies, who had been ready to challenge Devil Danger, now stood frozen, recognizing a power far beyond their own. The Angel's gaze passed over them as if they were furniture and landed squarely on Devil Danger.</p>
+                <p>She came to a stop before him. "I want to kill you, and your world, my dear," she said with a pleasant smile. "You are an anomaly. An error in the grand design. And you have been sentenced. By me."</p>
+                <p>Michael grabbed his brother's arm, his voice tight with panic. "We have to leave. Now!"</p>
+                <p>The Angel of Death’s smile widened. "Oh, I couldn't let you leave."</p>
+                <p>Devil Danger stood slowly, his pride ignited. He pushed Michael's hand away. "I never back down from a fight. No matter what."</p>
+                <p>"How brave," the Angel cooed. She gently reached out and laid a single, delicate finger on the surface of the great table, the one forged from a fallen star. It didn't crack or break. It simply dissolved, turning into a silent cascade of fine gray dust that settled on the floor.</p>
+                <p>The display of effortless annihilation was absolute. In that moment, a single thought passed through the minds of the six rulers: let her. Let this divine monster erase the brute who had murdered their peer. They stepped back, becoming willing spectators to an execution.</p>
+                <p>But just as the Angel of Death raised her hand toward Devil Danger, a streak of pure, white light shot from the shadows, landing between them. The hidden girl was hidden no more. She stood firm, a shield of shimmering energy erupting from her hands.</p>
+                <p>"Devil Danger, leave!" she commanded, not looking back at him. "You can't fight her right now! She is too powerful for anyone to handle. I can stall her."</p>
+                <p>She turned her head just enough to meet Michael's eyes. "Take him away! It is not a good time to fight!"</p>
+                <p>Devil Danger hesitated, his pride warring with the raw instinct for survival. But Michael didn't wait. He opened a swirling portal of dark energy behind them. "Brother, now!" he yelled, pulling a reluctant Devil Danger through it just as it snapped shut.</p>
+                <p>The Angel of Death looked at the girl who now stood alone before her, her expression one of mild disappointment. "You were my little servant once. You can't kill me."</p>
+                <p>"I don't have to," the girl replied, her shield glowing brighter. "I just have to stall enough for them to flee."</p>
+                <p>The Angel sighed. "A shame." She attacked. The battle was a blur of blinding light and suffocating darkness. The girl fought valiantly, but she was impossibly outmatched. With every parry, her shield cracked a little more. Weakened and bleeding light, she saw her time was running out. Gathering the very last ounce of her magic, she didn't attack. Instead, she unleashed it in a brilliant, blinding flash, a final, desperate gambit.</p>
+                <p>When the light faded, she was gone, the blast having given her just enough time to open her own portal and escape back to the one place she knew they would be: Devil Danger's savage home world.</p>
+            `
+        },
+        {
+            title: "Chapter 5: The Devil's Bargain",
+            content: `
+                <p>They landed hard on the twilight plains of <strong>Dino World</strong>. This was not a world known to the empires of the six rulers. For eons, it had remained hidden, a myth, a whisper. Its rarity was such that cartographers marked its sector of space with a simple warning: 'Here Be Nothing.' It was a silent giant, a ghost in the cosmic records, and the multiverse was only now hearing it speak for the first time—and learning to fear its voice. Dino World was a paradox, a mixture of heaven and hell, past and future. Here, ancient, soul-crushing magic existed alongside hyper-advanced technologies. Colossal dragons with scales like steel soared over cities built by minds that could engineer reality itself, while in the shadows lurked suspicious creatures from forgotten nightmares. It was a world of untold mysteries, and it was brutally powerful.</p>
+                <p>Its leadership was not a matter of public record; the identity of its previous king was an enigma, a ghost who never interfered with the other empires and, even on Dino World, remained a recluse who never showed his face outside his palace. The succession of its crown was a process steeped in ancient magic, not bloodline. The next ruler, be they boy or girl, royal or servant, native or even from another world, was chosen at birth based on their innate worthiness. The selection was made by the first and most powerful of the ancient dragons, a being known as <strong>Hell Rider</strong>, who existed in a state of eternal sleep. Only the birth of a worthy heir could stir him. Upon waking, he would seek out the chosen child, bring them to the palace, and remain awake as their guardian and mentor until they were old enough to rule and protect themselves. Devil Danger was its current chosen king, and that was all the multiverse knew.</p>
+                <p>It was into this world of ancient power and savage mystery that the two brothers had returned, not in triumph, but in a desperate retreat. The grand history of his kingdom meant little to Devil Danger at that moment. His focus was singular, narrowed to the immediate threat and the unanswered questions that had followed them through the portal.</p>
+                <p>“Who was that woman?” Devil Danger demanded, his voice a low growl of frustration. Before Michael could answer, a second portal tore open nearby and their mysterious savior staggered through before collapsing to the ground.</p>
+                <p>“She burned through all her power,” Michael said grimly, rushing to her side. “The Angel of Death is far stronger than we imagined.”</p>
+                <p>Devil Danger stood over the unconscious woman, his arms crossed, his face a mask of suspicion. He watched as Michael carried her to a recovery chamber, every instinct honed by centuries of conquest screaming that this was a trap. A willing sacrifice was a tactic, not a virtue.</p>
+                <p>For days, while the woman remained unconscious, Devil Danger observed. He saw the faint, pure light that pulsed from her skin as she healed. He felt the unfamiliar warmth it brought to his cold, primal world. It was a power he didn't understand, and therefore, one he couldn't trust.</p>
+                <p>Meanwhile, back in the wounded silence of the Covenant Hall, the six rulers stood amidst the dust of their sacred table, their shock slowly giving way to a dreadful realization. They were no longer in control.</p>
+                <p>The Angel of Death had reappeared before them, her ultimatum hanging in the air.</p>
+                <p>"He is an infection," High Lord Derek, the warrior, declared, his voice ringing with conviction. "She is the cure. We accept the alliance."</p>
+                <p>"Accept?" High Lord Elijah, the diplomat, countered, his voice smooth but laced with steel. "You would hand the keys to the multiverse to a being who vaporized our founding pact with a touch? This is not an alliance; it is a surrender."</p>
+                <p>"It is a practical solution to a problem we cannot handle ourselves," argued High Lord Stiles, ever the pragmatist. "Devil Danger is a barbarian. The Angel is a cosmic force. We are caught between them. Siding with the greater power is simple logic."</p>
+                <p>"There is nothing simple about this!" High Lady Hope's voice cracked, her eyes wide with visions only she could see. "I have seen the future she offers! A universe of perfect, silent order. A graveyard where nothing ever changes because free will has been 'cleansed' along with him!" She turned her desperate gaze to Damon, the Shadow Lord. "Tell them. You see the darkness in this bargain."</p>
+                <p>Damon, who had been silent until now, stepped forward. "She offers a devil's bargain. She will remove our enemy, yes. In return, she will own us. She will hunt the Crystals, and with them, she will unmake everything our founders built. We would be trading a rampaging wolf for a patient plague."</p>
+                <p>The council was fractured. Derek, Stiles, and a reluctant Remus saw the immediate benefit of destroying Devil Danger. Elijah, Hope, and Damon saw the apocalyptic cost. The Covenant Hall, meant for unity, had become a chamber of bitter division. The Angel of Death had not only shattered their table; she had shattered their council.</p>
+                <p>Back on Dino World, Michael was sitting vigil by the woman's side when he heard her whisper in her sleep. “...I will save you, Devil Danger… and one day, you’ll love me.”</p>
+                <p>When she finally awoke, she introduced herself as Arora, from the lost world of Veritas Lumen. She explained she held the Pure Crystal, powered by love. 'It and the Angel of Death's Dark Crystal are two of the Six Legendary Crystals from my home world,' she told Michael, her voice filled with awe. 'They are incredibly powerful.'</p>
+                <p>Devil Danger, who had been listening from the shadows, felt a jolt at the name 'Veritas Lumen'. A flicker of something cold and familiar passed through his eyes. He knew that name. He knew what he had done to its people. As he looked at this last survivor, another, darker thought clicked into place—a secret he would keep clutched tightly to his chest. His doubt hardened into a cold, calculated accusation as he stepped into the light.</p>
+                <p>“You served her,” he stated, his voice sharp. “You knew she was coming. You took a blow that was meant for me. This is all too convenient.” He took a step closer, towering over her. “How do we know you’re not a spy, sent to earn my trust before you strike?”</p>
+                <p>He turned and walked out, leaving a heavy, suffocating mistrust in his wake, and a new, unwilling alliance to confront.</p>
+            `
+        },
+        {
+            title: "Chapter 6: Truths and Treasons",
+            content: `
+                <p>Michael followed his brother out of the recovery chamber. “You can’t be serious,” he argued. “She risked her life for you!” Devil Danger’s expression was carved from stone. “Fine. We will learn the truth. Take her to the Demon’s Room.”</p>
+                <p>They escorted a weakened Arora down into a chamber where ancient magic ensured no lie could survive. Blue flames that burned with cold truth flickered from torches. “Speak,” Devil Danger commanded, his voice leaving no room for refusal.</p>
+                <p>Arora told her story. As a child, a demon had attacked her village on Veritas Lumen. She was frozen in fear, but a figure of immense power appeared, destroying the demon before vanishing into the shadows. He never even saw her, but he had saved her life. From that day, she sought to be strong like her mysterious savior. Her quest led her to the Angel of Death, whose talk of 'cosmic correction' seemed righteous. Arora asked to be trained, believing their cause was the same. But she soon overheard the Angel’s true plan: not just to destroy Devil Danger, but to annihilate every world he’d ever touched as a show of absolute power. That is when Arora fled to find and warn the man who had unknowingly saved her all those years ago.</p>
+                <p>As she spoke, the blue flames flared violently, a clear sign that her words were true. Michael looked at his brother, whose face remained an unreadable mask of stone. His pride would not let him admit he believed her, or that he remembered the day he’d saved a forgotten village. “We’ll continue this later,” he said, and strode from the chamber, leaving Arora and Michael in the flickering blue light.</p>
+                <p>Meanwhile, in the ruins of the Covenant Hall, the High Lords and Ladies had reached their own grim conclusion. The debate had raged for days. It was Damon, the Shadow Lord, who offered a third, treacherous path. "Let the monsters bleed each other," he proposed, his voice a low whisper. "Let the devil and the angel tear each other apart. We will withdraw, but we will watch. We will gather our strength. And when one of them falls, the six of us will unite our full power and strike down the weakened victor."</p>
+                <p>A cold, calculating silence filled the hall. It was a betrayal of every principle the Covenant Hall was founded on, but it was also their only viable path to survival. One by one, they gave their assent, forging a new, secret pact. Outwardly, it was an act of abdication as they departed to their own domains. But secretly, it was the formation of the most dangerous alliance of all. The multiverse was now the designated battlefield for a war where the self-appointed referees planned to execute the winner.</p>
+            `
+        },
+        {
+            title: "Chapter 7: Whispers and Warnings",
+            content: `
+                <p>After days of silence, Michael found Devil Danger's chamber in the high tower. The room was a wreck, a reflection of a tormented mind. 'It's been days,' Michael said, his voice cutting through the gloom. 'Are you ready to talk?'</p>
+                <p>Devil Danger turned from the window, his eyes heavy. 'Yes. I'm ready. You were right about Arora. She's on our side.' He paused. 'I didn't want to admit it, because then I would have to tell you what I was truly doing on the Crystal Planet.' He straightened up, a new resolve in his eyes. 'Bring Arora to the City Hall. It's time you both knew everything.'</p>
+                <p>Michael was taken aback. 'The City Hall? But you despise that place. You haven't set foot in there for centuries.' The City Hall was the sacred place where the first king of Dino World received his power, a place Devil Danger had always avoided.</p>
+                <p>'You will understand soon enough,' Devil Danger replied. 'Just bring her. It is time.'</p>
+                <p>Michael found Arora in the Demon's Room, where she had been staying. 'It's time,' he said. 'Devil Danger has a plan, and it begins at the City Hall.' Arora looked up, her expression a mixture of hope and apprehension. 'The place he hates most? Then we must go at once.'</p>
+                <p>Meanwhile, Devil Danger stood before the grand, ancient doors of the City Hall. He took a deep breath, steeling himself. 'They have to know,' he muttered to himself. 'They have to know why I was there.'</p>
+                <hr class="my-6 border-slate-300">
+                <p>At that very moment, across the void, the Angel of Death glided through the silent, crystalline corridors of the All-Knowing Archive, a library that existed outside of time. She did not ask for knowledge; she ripped it from the very fabric of the place. Ancient star-charts and prophecies turned to dust in her wake as she focused her power, searching for one thing: the location of the Elemental Crystal. A silent scream echoed through the archive as a single point of light blazed on a map of a forgotten nebula. The Angel smiled. The hunt had begun.</p>
+                <p>And in their respective domains, the six rulers began to move. Through a secure psychic channel opened by High Lord Elijah, they convened in secret. "Our spies confirm she seeks the next Crystal," Elijah reported. "We must be ready." Derek's voice was impatient. "Ready for what? To watch? If Devil Danger falls, she will be too powerful for us." Hope's voice was a strained whisper, "I see a throne of six skulls. I do not know whose they are." Their treacherous pact was already beginning to fray under the weight of their own ambition and fear.</p>
+            `
+        },
+        {
+            title: "Chapter 8: The King's Scepter",
+            content: `
+                <p>When Michael and Arora arrived, Devil Danger stood waiting in the vast, echoing hall. 'Here she is,' Michael announced. 'Now, tell us. Why this place?'</p>
+                <p>'Michael... I'm sorry for not telling you this before,' Devil Danger began. 'It's time you knew why I am so different from you.' 'What are you talking about?' Michael asked, confused. 'This is about Arora, isn't it? Not our family history.' 'It's all connected,' Devil Danger replied grimly. 'Just listen.'</p>
+                <p>He turned to Arora. 'Your story was true. I was on Veritas Lumen, and I saved you. I tried to erase your memory of that day, but the Pure Crystal must have protected you.' He took a deep breath. 'I am not from Dino World. I was adopted. I was born on Veritas Lumen.' A gasp escaped Arora. 'I was its prince. And you,' he said, his gaze locking with hers, 'are my sister. A princess.'</p>
+                <p>He explained that their father, the King, feared a prophecy that his children would steal his power. 'He cast me out because of my demonic appearance. The king of Dino World found me and raised me as his heir. Years later, he told me the truth.' Devil Danger's voice grew hard. 'I went back to Veritas Lumen in disguise. I confronted our father. I threatened to shatter his kingdom. I told him, I don't need my sister's hand to destroy this planet. I alone can do it.'</p>
+                <p>'He was a coward. He offered me the location of a Legendary Crystal if I would leave. He told me it was on Dragon's Mountain. It was on my way there that I found you being attacked, and I knew who you were.' He paused. 'After I found the stone, I went back to the king. I told him I had the crystal, and that I had seen you, my sister. I told him I had placed a dark curse upon him: if you ever left the planet, your absence would cause it to crumble to dust. He didn't believe me.' Devil Danger's voice cracked with a pain he had hidden for centuries. 'And after you were gone... it was destroyed. My curse came true.' He then gestured to the hall around them. 'The crystal our father spoke of... it is here. Hidden in this City Hall, obtainable only by passing trials that I created long ago. Trials that now, even I must face.'</p>
+                <p>As the last word of his confession echoed in the stunned silence, a section of the floor before him began to glow. Ancient runes flared to life, and a pedestal of pure, white stone rose from the ground. Resting upon it was a magnificent staff made of twisted, living crystal. At its apex was a setting, perfectly shaped to hold a Legendary Crystal. Michael stared in awe. "It is the King's Scepter," he breathed. "A legend from Veritas Lumen... It was said the king could use it to channel the planet's energy."</p>
+                <p>Devil Danger reached out and took the staff. As his fingers closed around it, the crystal pulsed with a brilliant light, accepting its true heir. "It does more than that," Devil Danger said, a new understanding dawning in his eyes. "Our father was a fool. He thought this was a tool of control. It is a conduit. With this, a wielder is not limited to the power of a single crystal... they can command them all."</p>
+                <hr class="my-6 border-slate-300">
+                <p>On the forgotten world of Aeridor, a storm of impossible scale was brewing. At its center, floating serenely, was the Angel of Death. Below her, the planet’s crust groaned and split apart as she drew upon its core, pulling the Elemental Crystal from its ancient prison. As the raw power of earth, wind, fire, and water coalesced into a single, swirling gem in her hand, the world of Aeridor died, its elements ripped away. The Angel of Death now held three of the six crystals. She looked out into the void, her gaze already fixed on her next target.</p>
+            `
+        },
+        {
+            title: "Chapter 9: The Trial of Will",
+            content: `
+                <p>Devil Danger, now armed with the King's Scepter, stood before the immense doors at the back of the City Hall. Arora and Michael flanked him, their faces set with grim determination. "I created these trials to guard the Dino Crystal," Devil Danger explained, his voice echoing in the chamber. "They are not tests of strength alone, but of spirit. The first is the Trial of Will. It will show you your deepest regrets and greatest fears." He placed the head of the scepter against the doors, and with a groan of ancient stone, they swung inward, revealing not a room, but a swirling vortex of grey, shapeless mist.</p>
+                <p>The moment they stepped inside, the doors slammed shut, and the world dissolved around them. They were in a void, a place of non-existence where the mist clung to them like a shroud. Then, the trial began. For each of them, the mist coalesced into a personalized hell.</p>
+                <p>Devil Danger found himself in the throne room of Veritas Lumen, watching it crumble into dust. A spectral figure of his father appeared before him, his eyes filled with sorrowful accusation. "Your pride broke our world," the ghost whispered, its voice the sound of grinding stone. "You are no king. You are a child who broke his home." A phantom weight settled on Devil Danger's shoulders, forcing him to his knees.</p>
+                <p>At the same time, Arora saw Devil Danger lying bloody and broken at her feet. "You... failed me," he gasped, as the monstrous demon from her childhood memories rose from the mist, its claws extended. She was paralyzed by the same terror she had felt as a child, her hope turning to ash.</p>
+                <p>And for Michael, the mist showed him Devil Danger and Arora walking away, their forms fading into the grey. "You are not one of us," their voices echoed. "You are just the son of a forgotten king." The terror of being abandoned, of being utterly alone and irrelevant, gripped his heart.</p>
+                <p>They were each on the verge of breaking, lost in their own solitude. But it was Michael, the anchor, who fought back first. "No!" he yelled into the void. "I am his brother!" His voice, real and raw, cut through the illusions. Arora heard him and turned from her nightmare. "He is not dead!" she cried, her own voice filled with renewed hope. Devil Danger heard them both. He looked up at the ghost of his father and stood, the phantom weight shattering. "I am not that child anymore," he roared. "I am their family!"</p>
+                <p>Their combined will, their choice to trust in their present bond over their past pain, shattered the illusion. The mist dissolved, revealing a stone chamber. A deep voice rumbled through the room. "You have passed the first test. The Trial of Will is complete. The Trial of Strength awaits."</p>
+            `
+        },
+        {
+            title: "Chapter 10: The Trial of Strength",
+            content: `
+                <p>The stone door to the next trial ground open. It revealed a vast cavern, and at its center slept a colossal, armored beast—a Titan from Dino World's first age. "The Guardian," Michael breathed. "Legend says it was the first king's final test."</p>
+                <p>The Titan’s eyes snapped open, its roar a physical force that sent the trio scattering. Devil Danger met it head-on, his raw power crashing against the Titan's impenetrable hide. It was a stalemate. He was strong, but the beast was tireless. "This isn't working!" he snarled, dodging a crushing blow. "Brute force isn't enough."</p>
+                <p>For the first time, he wasn't just thinking as a conqueror, but as a leader. "Michael!" he commanded. "Find a weakness! Its armor must have a flaw!" Michael, snapping into his element, began scanning the creature, his sharp eyes looking for any imperfection.</p>
+                <p>"Arora!" Devil Danger yelled. "Your crystal is powered by love, right? The love for your brother! Use it! Blind the beast!" Arora, her faith in him renewed, clutched the Pure Crystal. It pulsed with a brilliant, warm light, a manifestation of her fierce loyalty. "On my mark!" Devil Danger shouted.</p>
+                <p>"There!" Michael pointed to a small, almost invisible seam just below the Titan's neck. "A joint in the armor! It's the only place it isn't covered!"</p>
+                <p>"Now, Arora!" Devil Danger commanded. Arora thrust her hands forward, unleashing a blinding flash of pure, white light directly into the Titan's eyes. The beast roared in pain and confusion, stumbling blindly.</p>
+                <p>That was the opening Devil Danger needed. He channeled his own demonic energy into the King's Scepter—not using a crystal, but his own raw magic. The staff became a conduit for his will, focusing his power into a single, devastating point. He lunged forward, driving the tip of the scepter directly into the weak point Michael had found.</p>
+                <p>The Titan froze. A web of cracks spread from the point of impact, and with a final, deafening groan, the ancient Guardian crumbled into a mountain of dust and stone.</p>
+                <p>As the dust settled, the deep voice echoed once more. "You have proven your strength. Your bond has overcome what one alone could not. Only one test remains. The Trial of Wisdom. Prepare yourselves."</p>
+            `
+        },
+        {
+            title: "Chapter 11: The Trial of Wisdom",
+            content: `
+                <p>The final door opened not to a chamber, but to a vision. The three of them found themselves standing on an ethereal platform, looking down upon a thriving, unfamiliar world. Before them, the deep voice spoke, its words resonating in their very souls. "Behold the planet Cygnus X-1. Billions of lives, blissfully unaware of the war that rages. The Angel of Death arrives in one hour to claim the Celestial Crystal, which is hidden at its core. Her methods are absolute; the planet will not survive."</p>
+                <p>As the voice spoke, a fiery, orange gem materialized before them, floating just out of reach. "This is the Dino Crystal you seek," the voice continued. "Here is your choice, Prince of Veritas Lumen. The Trial of Wisdom is a single decision. Do you take your prize, for which you have sacrificed so much, and allow this world to perish? Or do I transport you to Cygnus X-1 to fight a battle you will likely lose, forfeiting your claim to this crystal forever?"</p>
+                <p>The weight of the choice was crushing. Michael looked at Devil Danger, his face pale. Arora clutched her brother's arm, her eyes wide with horror. This was not a test of magic or might, but of morality.</p>
+                <p>Devil Danger stared at the Dino Crystal, the prize he had coveted, the key to his revenge. He saw the power, the victory. But then, he looked at the vision of the doomed world, and he saw Veritas Lumen. He saw the dust and echoes of his own failure. He looked at Michael, his brother, and Arora, his sister—the family he had just reclaimed.</p>
+                <p>He turned his back on the Dino Crystal. "Send us," he said, his voice quiet but firm, stripped of all its usual arrogance. "We save them. The crystals don't matter if there's no one left to protect."</p>
+                <p>Arora and Michael looked at him, their expressions of fear replaced by overwhelming pride. They nodded in solidarity. It was not a choice they had to discuss. For the first time, they were truly united.</p>
+                <p>The voice of the trial spoke a final time, a note of warmth in its ancient tone. "You have chosen sacrifice over power. Mercy over ambition. That is the heart of all wisdom."</p>
+                <p>The vision of Cygnus X-1 faded. The Dino Crystal floated down from its pedestal and settled gently into Devil Danger's outstretched hand. "The crown is yours," the voice said. "You have earned it." As the crystal's power surged into him, a final, psychic whisper echoed in his mind alone. It was Hell Rider, the Dragon God. <strong>*The path of a true king is not walked alone. You have learned.*</strong></p>
+            `
+        },
+        {
+            title: "Chapter 12: The Dragon's Counsel",
+            content: `
+                <p>Back in the main chamber of the City Hall, Devil Danger looked at the Dino Crystal, now glowing with a steady, primal heat. He turned to Arora. "How does this one work? What can it do?"</p>
+                <p>Arora, her knowledge drawn from the lost books of Veritas Lumen, explained. "The Dino Crystal governs life itself. It can bring back creatures from the dead, command the will of the living, and awaken those who are in a long, deep slumber."</p>
+                <p>Devil Danger's eyes widened. "Even from an eternal sleep?" he asked, his voice suddenly filled with a raw, uncharacteristic hope. "Can it bring back the Dragon God?"</p>
+                <p>"The books say it can," Arora confirmed. Devil Danger looked at his brother and sister. "I want to bring Hell Rider back," he said, his voice thick with emotion. "When I was an outcast, a child alone, he was my only friend. He was the one who brought me to this palace. I trust him more than anyone."</p>
+                <p>They all agreed. Devil Danger placed the Dino Crystal into the King's Scepter. He raised the staff high, and a torrent of pure, untamed life energy erupted from it, bathing the entire hall in a fiery orange light. The ground shook, and a roar that was more ancient than the mountains themselves echoed from the heart of Dino World.</p>
+                <p>A colossal, armored dragon, wreathed in shadow and flame, materialized before them. It was Hell Rider. "Why am I awake?" the dragon's voice boomed in their minds. "There is no new prince... and yet, I feel young."</p>
+                <p>Devil Danger explained everything—the Angel of Death, the other rulers, the hunt for the crystals. Hell Rider listened patiently. When the story was finished, the ancient dragon shook his massive head. "Then you cannot defeat her. Not as you are."</p>
+                <p>"What do you mean?" Michael asked. "We have the Scepter and two of the crystals!"</p>
+                <p>"You do not understand the nature of the crystals," Hell Rider explained. "They are linked. The one who holds a crystal cannot kill another who holds one. You could paralyze the Angel, but you could never strike the final blow. To break this ancient law, there is only one path."</p>
+                <p>He paused, his ancient eyes filled with a grim light. "You must journey to a place called 'The Ancient Three.' It is the mythical birthplace of all magic, and the ones who dwell there are older than the founders themselves. They are the only beings who can grant you the power to truly defeat her. But the path is guarded by celestial forces who will destroy anyone who carries even a hint of dark magic or dark thoughts."</p>
+                <p>Michael and Arora stared in horror. "Are you serious?" Michael gasped. "No one has ever returned from that place! It's a suicide mission!"</p>
+                <p>"Yes," Hell Rider replied. "That is the only way."</p>
+                <p>Devil Danger didn't hesitate. He looked at the Angel's growing power, at the family he had just reclaimed, and nodded. "We'll go." Michael and Arora, seeing his resolve, knew there was no other choice. "Then we go together," Arora said.</p>
+                <p>Devil Danger looked at his oldest friend, his voice filled with a gratitude he rarely showed. "It is good to have you back, Hell Rider." The Dragon God dipped his massive head. <strong>*And it is good to see the boy I chose has finally become a king.*</strong></p>
+            `
+        },
+        {
+            title: "Chapter 13: The Shadow's Gambit",
+            content: `
+                <p>While Devil Danger and his allies prepared for their impossible journey, the secret pact of the High Lords and Ladies was put into motion. In the dimly lit chambers of the Obsidian Citadel, High Lord Damon summoned his most formidable asset. "The others demand a spy," he said to the figure that emerged from the deepest shadows. "They want eyes on Devil Danger."</p>
+                <p>The figure was Diablo, the first and most powerful of Lucifer's ancient servants. A master of dark arts and an undefeated champion, his only allegiance was to true power. "I serve the legacy of the Shadowed Realm," Diablo said, his voice a silken rasp. "But I fight for no one, my lord. I will observe, but I will not engage unless I find a will stronger than my own." Damon agreed, and Diablo dissolved into the darkness.</p>
+                <p>It did not take him long to find Dino World. He arrived just as the trials in the City Hall concluded, watching from an impossible angle as Devil Danger claimed the King's Scepter and the Dino Crystal, and then used them to awaken the legendary Hell Rider. He listened as the Dragon God spoke of the Ancient Three. Then, a stray pulse of energy from the awakening revealed his position. A blast of demonic fire shot toward him, which he effortlessly sidestepped.</p>
+                <p>He emerged from the shadows as Devil Danger demanded, "Who are you?"</p>
+                <p>"I am Diablo," he answered smoothly. "An undefeated champion, working for everyone and no one." Before another word could be spoken, he vanished.</p>
+                <p>He reappeared before High Lord Damon, recounting everything he had seen. Damon paled. "Two crystals and the Scepter? And he seeks the power of the Ancient Three? We must stop him." He turned to his guards. "You may leave, Diablo."</p>
+                <p>"One more thing, my lord," Diablo said, a predatory smile gracing his lips. "I have found a will stronger than my own. I have chosen my master, and it is not you."</p>
+                <p>"What?" Damon roared. "Who?!"</p>
+                <p>"Devil Danger."</p>
+                <p>Furious, Damon signaled his guards to attack. As they lunged, he reached for the Demon Crystal he kept hidden. But Diablo was faster. He moved like a phantom, the elite guards falling without a sound. He reappeared behind Damon, snatching the red crystal from his grasp just as the High Lord’s fingers brushed against it. "Too slow, my lord," Diablo whispered. He melted into the shadows, leaving Damon utterly defeated and disarmed.</p>
+                <p>Back in the high tower on Dino World, Diablo emerged from the shadows behind Devil Danger. "You again," Devil Danger snarled. "What are your intentions?"</p>
+                <p>"I wish to become your secretary," Diablo stated.</p>
+                <p>"Why?" Devil Danger demanded. "How can I trust you?"</p>
+                <p>Diablo held out his hand. Resting in his palm was the glowing, crimson Demon Crystal. "As a token of my trust," he said. "And as a down payment on my services."</p>
+                <p>Devil Danger stared at the crystal, then at the ancient, undefeated warrior who had just declared his allegiance. A slow, dangerous smile spread across his face. "That's a start," he said. "It can be the start of building my trust. For now."</p>
+            `
+        },
+        {
+            title: "Chapter 14: Revelations and Betrayals",
+            content: `
+                <p>Devil Danger called a council in the high tower. Michael, Arora, and Hell Rider gathered as he turned to their unexpected new ally. "Diablo," he began, his voice hard. "I will not have a serpent in my court, no matter what gifts it brings. You will be tested. Escort us to the Celestial Room."</p>
+                <p>It was the opposite of the Demon's Room, a chamber bathed in pure, divine light that not only compelled truth but also painfully spelled out the darkest secrets hidden in one's heart. "Why do you wish to serve me?" Devil Danger demanded as the light seared Diablo's shadowy form.</p>
+                <p>Diablo did not flinch, but his voice was strained. "I have always feared one thing," he confessed, the light forcing his deepest secret from his lips. "Not death. But a meaningless death. To die for a weak king with no purpose... to never reach my full potential because my master was unworthy. I seek a king whose power can elevate my own. The powerful the king, the more powerful the servant. In you, I see a king with a purpose grand enough to die for."</p>
+                <p>"You handed me the Demon Crystal," Devil Danger pressed. "You knew its location. Do you know where the others are?"</p>
+                <p>"I do," Diablo replied. "The Celestial Crystal. It is hidden on a world called Xavier Planet. A world that only becomes visible on the night of a blood moon." He looked to the star-charts in the tower. "Which is seven days from now. When it appears, my power will be magnified. I can show you the way."</p>
+                <p>Hell Rider's voice rumbled in their minds. <em>Be warned, young prince. That crystal is not without its guardians. The Founder Godric himself designed its trials: five tests of character. The Trial of Courage, of Purpose, of Sacrifice, of Destiny, and of Loyalty.</em></p>
+                <p>Devil Danger looked at his family, then at the ancient demon. "We are ready," he declared. Michael, Arora, and Hell Rider nodded in assent. "I will come with you," Diablo stated. Devil Danger gave a sharp nod. "You have your place. For now."</p>
+                <hr class="my-6 border-slate-300">
+                <p>In the Shadowed Realm, a furious High Lord Damon convened with the other rulers. After he explained Diablo's betrayal, the council was in turmoil. "He has two crystals now!" Stiles exclaimed. "And the Scepter! He's too powerful!"</p>
+                <p>It was Hope who calmed them, her voice laced with a strange sense of relief. "At least the crystals are with him, and not the Angel. Diablo told you he seeks the Ancient Three?"</p>
+                <p>"Yes," Damon spat. "A fool's errand."</p>
+                <p>"Perhaps," Elijah interjected smoothly. "But it is valuable information. Information our... associate... might appreciate."</p>
+                <p>They all agreed. Together, they focused their will, summoning the Angel of Death. She appeared not with a crash, but by coalescing from the very air, the floor freezing where she hovered. "This had better be important," she chimed.</p>
+                <p>The rulers told her everything. When they spoke of the quest to the Ancient Three, her serene mask finally broke, a flicker of genuine surprise in her eyes. "Indeed," she said, her voice losing its melodic quality for a fraction of a second. "That is valuable."</p>
+            `
+        },
+        {
+            title: "Chapter 15: The Planet of Trials",
+            content: `
+                <p>Devil Danger told Michael to assemble the soldiers of Dino World. Standing before them, he spoke with the authority of a true king. "For too long, we have remained hidden," he declared. "The multiverse has forgotten our power. The previous king ensured our silence, but I will ensure our voice is heard! We will no longer steal power from the shadows; we will claim it in the light! I am leaving on a quest, and until I return, I entrust this world to you. I will grant you the power to call upon our ancient allies, but I rely on you, my most trusted warriors, to be the first and final line of defense."</p>
+                <p>After days of preparation, the night of the blood moon arrived. In the sky, a crimson light pulsed, and a new planet shimmered into existence. "Xavier Planet," Diablo said. "It is time." Aboard the colossal form of Hell Rider, the team crossed light-years in a fraction of the time expected, the Dragon God streaking through the void like a comet.</p>
+                <p>As they approached, the planet was a grim sight, its surface littered with the skulls and bones of past champions and emperors who had failed the trials. "Be alert," Diablo warned. "The planet itself will test you from the moment you set foot on it."</p>
+                <p>Devil Danger nodded. He was the first to step onto the skeletal landscape. The moment his boot touched the ground, the world dissolved. He and his companions were no longer on the surface, but pulled into the planet's very core, a swirling vortex of energy and light. A voice, ancient and powerful, echoed around them.</p>
+                <p>"Why have you come to Xavier Planet?" it demanded. "What is your purpose?"</p>
+                <p>"We have come for the Celestial Crystal," Devil Danger answered, his voice steady.</p>
+                <p>A dangerous, rumbling laughter shook the core. "Another suicide squad, come to die. No one has ever passed the tests of King Godric. But my mission is not to stop you. It is to show you the way."</p>
+            `
+        },
+        {
+            title: "Chapter 16: The Trial of Courage",
+            content: `
+                <p>The voice in the core solidified not into a creature, but into the very chamber around them. The starlight and swirling energy formed walls of living rock, and the voice echoed from the planet's heart. "I am the being you call Unicorn," it resonated. "This planet is my body, a prison forged from my essence by your father, Godric, after I destroyed universes in my past. The Celestial Crystal you seek is my cage. It is the only thing that holds me here. It has purified my spirit over the eons, but I long for freedom. If you can pass the trials and take the stone, I will finally be released."</p>
+                <p>The voice then shifted. "But first, you must prove you are worthy. Introduce yourselves."</p>
+                <p>Devil Danger stepped forward. "I am Devil Danger, the unwanted son of King Godric, ruler of Dino World."</p>
+                <p>Arora followed. "I am Arora, unwanted daughter of King Godric, and holder of the Purity Crystal."</p>
+                <p>Michael stood tall. "I am Michael, brother of Devil Danger and son of the Silent King of Dino World."</p>
+                <p>Diablo bowed with a flourish. "I am Diablo, expert in the shadow arts, and secretary to Devil Danger."</p>
+                <p>Finally, a voice like grinding mountains echoed in their minds. <em>"I am Hell Rider, First Dragon of Dino World, and guardian to its king."</em></p>
+                <p>"You have the blood of the one who imprisoned me," Unicorn's voice rumbled. "You may pass where others have failed. Be on high alert. The Trial of Courage begins now."</p>
+                <p>The world around them shattered. They found themselves standing on a narrow, crumbling bridge of stone, suspended over a chasm of swirling, chaotic nebulae. Below them, a billion stars screamed. The bridge was breaking apart with every step they took.</p>
+                <p>"This is a test of will, not of speed!" Michael yelled over the cosmic roar. "The bridge is a manifestation of our own courage! If we fear, we fall!"</p>
+                <p>They took a step, and a chunk of the bridge crumbled away. Arora cried out as a vision of the Angel of Death appeared in the abyss, smiling up at her. At the same time, Diablo saw a vision of himself, old and withered, dying alone in service to a forgotten master. Michael saw his brother consumed by demonic energy, turning on him with hate-filled eyes. Hell Rider saw Devil Danger fall, not to a foe, but to his own pride, becoming a tyrant who consumed worlds, the ultimate failure of his long guardianship.</p>
+                <p>But it was Devil Danger who faced the most magnificent horror. The chasm showed him a vision of himself, holding all six crystals, seated on a throne made of the bones of his family and friends. He was all-powerful, but he was utterly alone, his victory a hollow, meaningless echo. It was the future his pride had always secretly craved, and it terrified him to his very soul.</p>
+                <p>"No!" he roared, shaking the vision from his head. "That is not my path!" He took a firm, fearless step forward, and the bridge beneath his feet solidified into solid, unbreakable diamond. His courage was a shield, and it extended to the others. He reached back, pulling Arora forward. Michael grabbed Diablo's arm, and with Hell Rider's colossal form shielding them from the cosmic winds, they followed Devil Danger's lead. With every step taken in unity, the bridge became stronger, until they stood on the other side, the chasm of fear vanishing behind them. They had passed the first trial, not as individuals, but as a family.</p>
+            `
+        },
+        {
+            title: "Chapter 17: The Trial of Purpose",
+            content: `
+                <p>The diamond bridge solidified into a grand hall of mirrors. Unicorn's voice echoed, "You have courage. But courage without purpose is merely recklessness. This is the Trial of Purpose. The mirrors will show you the future your heart desires. Choose your true path, or be lost in vanity forever."</p>
+                <p>Each of them was drawn to a different mirror. Devil Danger saw himself as the avenger, the Angel of Death defeated at his feet, the High Lords begging for his mercy. It was the victory he had dreamed of. But another mirror showed him as a true king, using the crystals to restore Veritas Lumen, its people hailing him as a savior, but his anger was gone, replaced by a heavy crown of responsibility.</p>
+                <p>Arora saw her parents, alive and well, welcoming her home to a Veritas Lumen that had never fallen. But Michael and Devil Danger were not there. It was a perfect past, but an empty one. Another mirror showed her standing by her brother's side, forging a new kingdom, a new family, but the ghosts of their lost home would always linger.</p>
+                <p>Michael saw himself as the power behind the throne, the celebrated strategist who guided his brother to glory, forever remembered as the king's shadow. Another mirror showed him as the founder of a new All-Knowing Archive, a place of peace and knowledge, but it was a quiet life, far from the adventures and dangers he had come to know.</p>
+                <p>Diablo saw a future where he had surpassed all others, a being of pure, unrivaled power, feared by all. But he was alone, his throne empty, his potential fulfilled but meaningless. Another mirror showed him standing guard, the loyal and respected protector of a just king, his power in service to something greater than himself.</p>
+                <p>Hell Rider saw a vision of a peaceful Dino World, its borders forever secure, his duty finally complete, allowing him to return to his eternal slumber. But another mirror showed him awake and alive, flying through the skies of a new, rebuilt Veritas Lumen, a guardian not of a king, but of a people.</p>
+                <p>For a moment, they were all mesmerized by their selfish desires. But Devil Danger, remembering the hollowness of his vision in the chasm, turned away from his revenge. "A king protects his people," he declared, and walked toward the mirror of responsibility. His choice created a ripple effect. Arora turned from her perfect past, choosing the future with her new family. Michael chose to remain the strategist his brother needed. Diablo chose service over solitude, and Hell Rider chose a future of purpose over one of peace. One by one, they chose their selfless purpose, and the mirrors of vanity shattered, revealing the door to the next trial.</p>
+            `
+        },
+        {
+            title: "Chapter 18: The Trial of Sacrifice",
+            content: `
+                <p>"Your purpose is true," Unicorn's voice boomed. "But what are you willing to give up to achieve it? This is the Trial of Sacrifice. To pass, you must give that which is most precious to you." Five stone altars rose from the floor, one before each of them.</p>
+                <p>Michael was asked to sacrifice his oldest book of lore, his link to the father he never knew. With a heavy heart, he placed it on the stone, and it turned to dust. Arora was asked to give up a small, crystal pendant, the only memento of her mother. Tears streamed down her face as she let it go, and it vanished.</p>
+                <p>Diablo was asked to sacrifice his undefeated record. A vision of a battle he had never fought appeared before him, ending in his humiliating defeat. The memory was seared into his mind, a permanent stain on his pride. He gritted his teeth and accepted the false memory. Hell Rider was asked to sacrifice a piece of his immortality, accepting that he would one day fade as all living things do. The ancient dragon bowed his head and let a single, glowing scale fall to the altar.</p>
+                <p>Finally, it was Devil Danger's turn. The altar before him glowed, and an image of the King's Scepter appeared above it. "No," he whispered. It was his birthright, the key to the crystals. To give it up was to give up everything. He looked at his family, at the sacrifices they had already made for him. He remembered the lesson of the Titan: that his own strength was enough. With a final, resolute nod, he held out the scepter. "I accept," he said. The real scepter in his hand dissolved into light, and the trial was complete. They had proven that their cause was more important than their possessions.</p>
+            `
+        },
+        {
+            title: "Chapter 19: The Trial of Destiny",
+            content: `
+                <p>"You have given up your past," Unicorn's voice intoned. "Now you must accept your future. This is the Trial of Destiny." A magnificent, shimmering tapestry woven from starlight appeared before them, swirling with images of things to come. "Touch the tapestry, and accept the fate it shows you, no matter the cost."</p>
+                <p>Arora stepped forward and touched it first. She saw herself not as a queen, but as a wandering healer, using the Pure Crystal to bring life back to dead worlds across the multiverse, forever helping but never settling.</p>
+                <p>Michael saw himself not as an advisor, but as the master of a new galactic library, a quiet life dedicated to preserving knowledge for future generations.</p>
+                <p>Diablo saw his final moment: not in glorious battle, but in a selfless act, creating a shield of shadows to protect Michael and Arora from a fatal blow.</p>
+                <p>Hell Rider saw his own end, his life force flowing out of him to seed a barren world with a new generation of dragons, ensuring his kind would not perish with him.</p>
+                <p>Finally, Devil Danger reached out his hand. He did not see a throne or a crown. He saw himself standing before the Angel of Death. He held several of the crystals, and she held the others. As they lunged at each other, they did not collide, but merged, erupting in a blinding flash of pure creation and utter annihilation that brought a final, lasting balance to the multiverse. His destiny was not to rule, but to be the ultimate sacrifice. He stared at the vision, his face grim, and then slowly nodded. He accepted it. As he did, the tapestry faded, and the final door opened.</p>
+            `
+        },
+        {
+            title: "Chapter 20: The Trial of Loyalty",
+            content: `
+                <p>They entered the final chamber. In the center, floating in a beam of pure starlight, was the Celestial Crystal. "You have arrived," Unicorn's voice said, a note of anticipation in its tone. "But the Founder's law is absolute. Only one may claim the prize. You must choose who is most worthy. The rest will be cast from this world, never to return."</p>
+                <p>Walls of energy separated them, and whispers echoed in their minds, tempting them. *Take it for yourself. You are the strongest. You are the purest. You are the smartest. You deserve it.*</p>
+                <p>For a moment, they each considered it. The power to save the universe, held within their grasp. But then Devil Danger looked through the transparent walls at his family—the brother who had always believed in him, the sister who had forgiven him, the dragon who had raised him, and the demon who had chosen him. He thought of the trials they had passed together.</p>
+                <p>He turned his back on the crystal and faced his team. On the other side of the walls, Arora, Michael, Diablo, and Hell Rider all did the same. They chose each other.</p>
+                <p>"We claim it together, or not at all," Devil Danger declared, his voice ringing with absolute certainty.</p>
+                <p>The energy walls shattered. The whispers stopped. A deep, joyous laughter echoed from the planet's core. "You have passed the final test," Unicorn's voice boomed. "The law was a lie. The trial was to reject it."</p>
+                <p>The Celestial Crystal floated down from the beam of light. It did not go to Devil Danger's hand, but to the empty slot on the King's Scepter, which reappeared in his grasp, its sacrifice undone. The scepter now blazed with the power of three Legendary Crystals. They had passed the trials of Xavier Planet. And Unicorn, the planet-prison, was finally free.</p>
+            `
+        },
+        {
+            title: "Chapter 21: A Pact of Vengeance",
+            content: `
+                <p>As the Celestial Crystal settled into the King's Scepter, the fabric of Xavier Planet began to dissolve. The ancient being Unicorn, its form now a brilliant constellation of pure starlight, bowed its head. "You have freed me, children of Godric. For that, you have my eternal gratitude. Call my name into the void when you have need of me, and I will come." With a final, blinding flash, the planet-prison was gone, and the team found themselves back on Dino World, aboard Hell Rider's back.</p>
+                <p>Their return was met with a roar of celebration. The soldiers and people of Dino World, who had feared the worst, now saw their king return not with just one, but three of the multiverse's greatest treasures. For the first time, they saw Devil Danger not just as a conqueror, but as a true king who had faced impossible odds and returned victorious. A grand festival was declared, a moment of light and hope in the growing darkness.</p>
+                <hr class="my-6 border-slate-300">
+                <p>But in the Shadowed Realm, there was no celebration. High Lord Damon sat in his throne room, the air thick with his rage and humiliation. It was into this simmering fury that the Angel of Death appeared, coalescing from the shadows with a serene smile.</p>
+                <p>"How did you get here?" Damon snarled, though he already knew the answer. Power like hers did not need to ask for entry.</p>
+                <p>"You have been wronged, little lord," the Angel chimed, ignoring his question. "Your servant has betrayed you. Your prize has been stolen. You want revenge." It was not a question.</p>
+                <p>"I can do anything to get it," Damon hissed, his voice trembling with hate.</p>
+                <p>"Good," the Angel said, her smile widening. She held out her hand, and the swirling, multi-hued Elemental Crystal materialized above her palm. "Devil Danger now holds three crystals. So do I. The board is balanced, but you can tip the scales. You know the worlds of the founders. You have the armies and the spies. I have the power."</p>
+                <p>She let the Elemental Crystal float across the room until it hovered before Damon's astonished eyes. "Take this," she said. "Use it. Prepare your armies. Let your desire for revenge be your guide. When the time is right, we will strike. And you will have your vengeance."</p>
+                <p>Damon stared at the crystal, at the unimaginable power being offered to him. He knew it was a deal with a devil, but his hatred for Devil Danger and his traitorous servant burned hotter than his caution. He reached out and took the crystal, its power surging through him, amplifying his rage a thousandfold. The Angel of Death watched, her smile never wavering. The most dangerous alliance of all had just been armed.</p>
+            `
+        }
+    ];
+
+    let characterData = {
+        'The First Founders': [
+            { name: 'Albus Dumbledore', title: 'The Archmage Primus', description: 'Wove the laws of magic into the Covenant Hall. His essence ensures arcane balance and order.', image: 'albus.png' },
+            { name: 'Godric', title: 'The Gem-Seer', description: 'Architect of Veritas Luman and creator of the Six Legendary Crystals. His power resonates with the very fabric of creation.', image: 'godric lumen.png' },
+            { name: 'Alexander', title: 'The Sword-Father', description: 'Forged the great table from a fallen star. He embodies the codes of honor and strength that bind warriors.', image: 'alexander.png' },
+            { name: 'Esther', title: 'The World-Speaker', description: 'An Omnilingual who gifted the Hall with perfect understanding, ensuring truth and clarity in all council.', image: 'esther.png' },
+            { name: 'Argent', title: 'The Unifier', description: 'The first Emperor who provided the Hall its laws and purpose: a sanctuary for dialogue and cosmic balance.', image: 'argent.png' },
+            { name: 'Freya', title: 'The Star-Spinner', description: 'Wove the living star chart on the Hall\'s ceiling, a shifting map showing the state of the multiverse.', image: 'freya.png' },
+            { name: 'Lucifer', title: 'The Shadow-Carver', description: 'Carved the great obsidian doors that only open to those whose purpose affects all of existence.', image: 'lucifer.png' },
+        ],
+        'The High Council': [
+            { name: 'High Lord Remus', title: 'The Arcane Scholar', description: 'Son of Dumbledore. A reclusive academic who sees magic as a science to be understood, not an art to be wielded. His rule is one of logic and cold order.', image: 'remus.png' },
+            { name: 'High Lord Derek', title: 'The Unbroken Blade', description: 'Son of Alexander. A proud and rigid master swordsman who upholds a strict code of martial honor, settling all disputes through ritual combat.', image: 'derek.png' },
+            { name: 'High Lord Elijah', title: 'The Golden Voice', description: 'Son of Esther. An impossibly charismatic and cunning politician who uses his omnilingual gift to maintain a delicate and intricate web of alliances.', image: 'elijah.png' },
+            { name: 'High Lord Stiles', title: 'The Burdened Unifier', description: 'Son of Argent. A weary pragmatist, burdened by the immense weight of bureaucracy required to hold his father\'s sprawling empire together.', image: 'stiles.png' },
+            { name: 'High Lady Hope', title: 'The Silent Seer', description: 'Daughter of Freya. A fatalistic seer who reads the future in the cosmic dance of galaxies. This knowledge makes her quiet and cryptic. She holds a secret love for Damon.', image: 'hope.png' },
+            { name: 'High Lord Damon', title: 'The Vengeful Lord', description: 'Son of Lucifer. Betrayed by Diablo and now armed with the Elemental Crystal by the Angel of Death, his singular focus is on revenge against Devil Danger.', image: 'damon.png' },
+        ],
+        'The Outsiders': [
+            { name: 'Devil Danger', title: 'The Crystal Prince', description: 'The exiled prince of Veritas Lumen. After passing the trials of two worlds, he now wields the King\'s Scepter and three Legendary Crystals.', image: 'devildanger.png' },
+            { name: 'Michael', title: 'The Royal Strategist', description: 'Devil Danger\'s adopted brother. His sharp intellect and unwavering loyalty were key to winning the Dino Crystal, solidifying his place as a trusted advisor.', image: 'michael.png' },
+            { name: 'Arora', title: 'The Light of Hope', description: 'The lost princess of Veritas Lumen. Her faith in her brother was rewarded in the trials, and her control over the Pure Crystal has grown stronger.', image: 'arora.png' },
+            { name: 'Hell Rider', title: 'The Dragon God', description: 'The ancient guardian of Dino World\'s crown. Awakened by the Dino Crystal, he serves as a wise and powerful advisor to Devil Danger, revealing the true nature of the quest ahead.', image: 'hell rider.png' },
+            { name: 'Diablo', title: 'The Shadow\'s Gambit', description: 'An ancient and immensely powerful servant of the Shadowed Realm. Recognizing Devil Danger\'s superior power, he has betrayed his former master and pledged his allegiance to the Dragon King, bringing the Demon Crystal with him.', image: 'diablo.png' },
+        ],
+        'Cosmic Threats': [
+            { name: 'Angel of Death', title: 'The Annihilator', description: 'An ethereal being of immense power who seeks to "correct" the multiverse by destroying anomalies like Devil Danger. She has armed High Lord Damon with the Elemental Crystal, forging a new, dangerous alliance.', image: 'anhilator.png' },
+        ],
+        'Ancient Beings': [
+            { name: 'Unicorn', title: 'The Freed Guardian', description: 'A former universe-destroying monster whose very body was transformed into Xavier Planet by the Founder Godric. Now freed from its prison, it has pledged its aid to Devil Danger.', image: 'unicorn.png' },
+        ]
+    };
+
+    let worldData = [
+        { name: 'The Twilight Fulcrum (Argent)', description: 'Argent\'s realm, a manifestation of perfect equilibrium where light and shadow, good and evil, exist in a necessary and harmonious balance. It is a world perpetually caught in twilight.', icon: '⚖️', image: 'twilight.png' },
+        { name: 'Veritas Luman (Godric)', description: 'The luminous realm of absolute truth and clarity forged by Godric. It was the source of the Six Legendary Crystals before it was shattered by a curse laid by its own prince.', icon: '☼', image: 'veritas.png' },
+        { name: 'Umbra Infinitum (Lucifer)', description: 'Lucifer\'s Shadow Realm, a world of potential, secrets, and introspection. It is a place of perpetual twilight where the universe\'s most hidden truths are guarded.', icon: '🌑', image: 'shadow.png' },
+        { name: 'The Stellar Weave (Freya)', description: 'Freya\'s personal cosmos, woven from starlight and nebulae. Here, constellations are living beings and the fabric of spacetime can be shaped at her will.', icon: '✨', image: 'stellar.png' },
+        { name: 'The Bastion of Valor (Alexander)', description: 'Alexander\'s realm, forged from strength and honor. It is a world of colossal fortresses and training arenas where all conflicts are resolved through honorable combat.', icon: '⚔️', image: 'bastion.png' },
+        { name: 'The Arcane Concord (Dumbledore)', description: 'A world constructed by Albus Dumbledore from pure magic. It is an impossible city of floating libraries and spires where the laws of physics are magical decrees.', icon: '📜', image: 'arcane.png' },
+        { name: 'The Unison Sanctuary (Esther)', description: 'Esther\'s realm, a sanctuary of boundless acceptance where creatures of every form live in harmony. A gentle magic soothes aggression and fosters communication.', icon: '🕊️', image: 'sanctuary.png' },
+        { name: 'The Covenant Hall', description: 'A sacred sanctuary built by the First Founders that exists between places. It serves as a neutral ground for the rulers of the multiverse to meet when a crisis affects all of reality.', icon: '✧', image: 'hall.png' },
+        { name: 'Dino World', description: 'A mysterious and brutally powerful world hidden from the rest of the multiverse. It is a paradox of ancient magic, hyper-technology, and primal creatures. Its king is not born, but chosen by the Dragon God, Hell Rider.', icon: '✦', image: 'dinoworld.png' },
+        { name: 'The Six Domains', description: 'The collective term for the empires ruled by the descendants of the founders, including the Arcane Sanctum, the Warrior\'s Moon, the Diplomatic Core, the Unifier\'s Systems, the Celestial Spire, and the Shadowed Realm.', icon: '☫', image: 'six domains.png' },
+        { name: 'Xavier Planet', description: 'A legendary and deadly world that is the living body of the ancient monster, Unicorn. It appears only on a blood moon and houses the Celestial Crystal at its core, which acts as the creature\'s prison.', icon: '☾', image: 'xavier.png' }
+    ];
+    
+    let crystalData = [
+        { name: 'Pure Crystal', color: '#f0abfc', description: 'Powered by positive emotions like love and hope. It can create powerful defensive shields and has immense healing properties. Currently held by Arora.', image: 'pure.png' },
+        { name: 'Dark Crystal', color: '#4a044e', description: 'The direct opposite of the Pure Crystal. It feeds on fear, destruction, and negative energy to grant its wielder immense destructive power. Currently held by the Angel of Death.', image: 'dark.png' },
+        { name: 'Elemental Crystal', color: '#3b82f6', description: 'Controls the fundamental building blocks of reality: earth, wind, fire, and water. After being claimed by the Angel of Death, she has now given it to High Lord Damon to sow chaos.', image: 'elemental.png' },
+        { name: 'Demon Crystal', color: '#dc2626', description: 'Its properties are shrouded in mystery, but its name suggests a connection to dark entities. After being stolen from High Lord Damon, it is now in the possession of Devil Danger.', image: 'demon.png' },
+        { name: 'Celestial Crystal', color: '#6366f1', description: 'Believed to be connected to the power of stars and cosmic energies. Now held by Devil Danger after his team passed the five trials of Xavier Planet.', image: 'celestial.png' },
+        { name: 'Dino Crystal', color: '#f97316', description: 'An artifact of immense and ancient power connected to primal life and strength. Now held by Devil Danger after he and his family passed the three trials of the City Hall.', image: 'dino.png' }
+    ];
+
+    const navLinks = document.querySelectorAll('.nav-link');
+    const mobileNav = document.getElementById('mobile-nav');
+    const sections = document.querySelectorAll('main section');
+
+    function showSection(id) {
+        sections.forEach(section => {
+            section.classList.toggle('active', section.id === id);
+        });
+        navLinks.forEach(link => {
+            link.classList.toggle('active-nav', link.getAttribute('href') === `#${id}`);
+        });
+        if (mobileNav.value !== id) {
+            mobileNav.value = id;
+        }
+        revealElements();
+    }
+
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const id = e.target.getAttribute('href').substring(1);
+            showSection(id);
+        });
+    });
+    
+    mobileNav.addEventListener('change', (e) => {
+        showSection(e.target.value);
+    });
+
+    function initStory() {
+        const container = document.getElementById('story-content');
+        if(!container) return;
+        
+        container.innerHTML = ''; // Clear existing
+        storyData.forEach((chapter, index) => {
+            const chapterEl = document.createElement('div');
+            chapterEl.className = 'bg-white p-6 rounded-lg shadow-lg border border-slate-200 reveal';
+            chapterEl.innerHTML = `
+                <button class="w-full text-left chapter-toggle">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-xl md:text-2xl font-bold text-slate-800">${chapter.title}</h3>
+                        <span class="transform transition-transform duration-300 text-indigo-500 text-3xl font-light icon-span">+</span>
+                    </div>
+                </button>
+                <div class="chapter-content text-slate-600 leading-relaxed space-y-4">
+                    ${chapter.content}
                 </div>
-            </section>
-
-            <!-- Crystals Section -->
-            <section id="crystals" class="content-section">
-                <div class="text-center mb-8">
-                    <h2 class="font-cinzel text-3xl font-bold">Artifacts of Power</h2>
-                    <p class="text-gray-600 mt-2">Discover the Six Legendary Crystals that can reshape reality itself.</p>
-                </div>
-                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-8" id="crystal-cards">
-                    <!-- Crystal cards will be generated by JS -->
-                </div>
-                <div id="crystal-display" class="bg-white p-6 md:p-8 rounded-xl shadow-lg min-h-[300px] transition-opacity duration-500">
-                    <p class="text-center text-gray-500">Select a crystal to learn about its properties.</p>
-                </div>
-            </section>
-        </main>
-
-    </div>
-
-    <script>
-        const characterData = [
-            { name: "Devil Danger", title: "The Conqueror", description: "A being of immense power who has conquered countless worlds. Arrogant and distrustful, his journey is one of learning to rely on others and finding the hero within himself.", image: "dd.jpg" },
-            { name: "Arora", title: "The Guardian", description: "The last of her kind from the Crystal Planet and wielder of the Pure Crystal. Her unwavering hope, love, and loyalty are the keys to turning the tide and healing Devil Danger's hardened heart.", image: "help.jpg" },
-            { name: "Michael", title: "The Brother", description: "Devil Danger's brother and his moral compass. Michael consistently pushes his brother to see beyond his pride and to trust in the goodness of others, playing a crucial role in the formation of their alliance.", image: "michael.jpg" },
-            { name: "Angel of Death", title: "The Annihilator", description: "A powerful and terrifying entity who seeks to 'correct' the multiverse by destroying Devil Danger and everything he has touched. As the wielder of the Dark Crystal, her power feeds on fear and destruction.", image: "villain.jpg" },
-        ];
-
-        const crystalData = [
-            { name: "Pure Crystal", description: "Draws its power from positive emotions like love, hope, and care. It can create powerful defensive shields and has immense healing properties. Wielded by Arora.", image: "pure.png" },
-            { name: "Dark Crystal", description: "The direct opposite of the Pure Crystal, it feeds on fear, destruction, and negative energy. It grants immense destructive power to its wielder. Held by the Angel of Death.", image: "dark.png" },
-            { name: "Elemental Crystal", description: "Controls the fundamental building blocks of reality: earth, wind, fire, and water. It was stolen by the Angel of Death in a cunning ambush on the world of Aeridor.", image: "elemental.png" },
-            { name: "Demon Crystal", description: "The properties of this crystal are shrouded in mystery, but its name suggests a connection to dark and powerful entities.", image: "demon.png" },
-            { name: "Celestial Crystal", description: "Believed to be connected to the power of stars and cosmic energies. Its true potential is unknown.", image: "celestial.png" },
-            { name: "Dino Crystal", description: "An artifact of immense and ancient power hidden by Devil Danger within the City Hall on Dino World. Its name suggests a connection to primal life and strength, and it can only be obtained by passing his trials.", image: "dino.png" },
-        ];
-
-        const storyData = {
-            timeline: [
-                { chapter: 1, title: "The Meeting and the Aftermath", content: "<p>The great hall was dark as a starless night. Around a darkwood table sat the last rebels in a multiverse that had learned to kneel, united by a single cause: the end of Devil Danger, the conqueror of worlds. Suddenly, the great obsidian doors groaned open. A figure stood silhouetted in the doorway. The voice of Devil Danger came from the shadow, a low rumble that seemed to shake the foundations of the hall. “I was told there was a conspiracy. I’m disappointed.”</p><p>His brother, Michael, pushed through the crowd. “Brother, you shouldn’t be here,” he hissed. “Something else is coming.” Devil Danger scoffed. “Let it come.” As if summoned, the gates disintegrated and a new figure stepped through the ruin: the Angel of Death. “I am here to correct your mistake,” she said, turning the council table to dust. “Your Dino World will burn.”</p><p>Before she could strike, a woman landed between them, a shield of pure, blinding light shimmering into existence. “Run!” she shouted. Michael grabbed his brother and pulled him away as the Angel of Death's dark power slammed into the bright shield.</p><hr class='my-6 border-gray-300'/><p>They landed hard on the twilight plains of Dino World. “Who was that woman?” Devil Danger demanded. Before Michael could answer, their mysterious savior staggered through a portal and collapsed. “She burned through all her power,” Michael said grimly. “The Angel of Death is far stronger than we imagined.”</p><p>For days, the woman remained unconscious in a recovery chamber. One day, Michael heard her whisper in her sleep, “...I will save you, Devil Danger… and one day, you’ll love me.” When she awoke, she introduced herself as Arora, from the lost Crystal Planet. She explained she held the Pure Crystal, powered by love. 'It and the Angel of Death's Dark Crystal are two of the Six Legendary Crystals from my home world,' she told Michael, her voice filled with awe. 'They are incredibly powerful.' Devil Danger, who had been listening from the shadows, stepped forward. “You served her?” he asked, his voice cold. “How do we know you’re not a spy?” He turned and walked out, leaving a heavy mistrust in his wake.</p>" },
-                { chapter: 2, title: "Testimony Under Oath", content: "<p>Michael followed his brother. “You can’t be serious,” he argued. “She risked her life for you!” Devil Danger’s expression was carved from stone. “Fine. We will learn the truth. Take her to the Demon’s Room.”</p><p>They escorted Arora down into a chamber where no lie could survive. Blue flames flickered from torches. “Speak,” Devil Danger commanded.</p><p>Arora told her story. As a child, a demon attacked her. She was frozen in fear, but Devil Danger appeared, destroying the demon before vanishing. He never even saw her, but he had saved her life. From that day, she sought to be strong like him. She found the Angel of Death and asked to be trained, believing their cause was the same. But she overheard the Angel’s true plan: to destroy Devil Danger and every world he’d touched. That is when Arora fled to find and warn him.</p><p>The blue flames flared, confirming her story was true. Michael looked at his brother, who remained silent for a long time. His pride would not let him admit he believed her. “We’ll continue this later,” he said, and strode from the chamber.</p>" },
-                { chapter: 3, title: "A Summons to the Past", content: "<p>After days of silence, Michael found Devil Danger's chamber in the high tower. The room was a wreck, a reflection of a tormented mind. 'It's been days,' Michael said, his voice cutting through the gloom. 'Are you ready to talk?'</p><p>Devil Danger turned from the window, his eyes heavy. 'Yes. I'm ready. You were right about Arora. She's on our side.' He paused. 'I didn't want to admit it, because then I would have to tell you what I was truly doing on the Crystal Planet.' He straightened up, a new resolve in his eyes. 'Bring Arora to the City Hall. It's time you both knew everything.'</p><p>Michael was taken aback. 'The City Hall? But you despise that place. You haven't set foot in there for centuries.' The City Hall was the sacred place where the first king of Dino World received his power, a place Devil Danger had always avoided.</p><p>'You will understand soon enough,' Devil Danger replied. 'Just bring her. It is time.'</p><hr class='my-6 border-gray-300'/><p>Michael found Arora in the Demon's Room, where she had been staying. 'It's time,' he said. 'Devil Danger has a plan, and it begins at the City Hall.' Arora looked up, her expression a mixture of hope and apprehension. 'The place he hates most? Then we must go at once.'</p><p>Meanwhile, Devil Danger stood before the grand, ancient doors of the City Hall. He took a deep breath, steeling himself. 'They have to know,' he muttered to himself. 'They have to know why I was there.'</p>" },
-                { chapter: 4, title: "The Crystal Prince", content: "<p>When Michael and Arora arrived, Devil Danger stood waiting in the vast, echoing hall. 'Here she is,' Michael announced. 'Now, tell us. Why this place?'</p><p>'Michael... I'm sorry for not telling you this before,' Devil Danger began. 'It's time you knew why I am so different from you.' 'What are you talking about?' Michael asked, confused. 'This is about Arora, isn't it? Not our family history.' 'It's all connected,' Devil Danger replied grimly. 'Just listen.'</p><p>He turned to Arora. 'Your story was true. I was on the Crystal Planet, and I saved you. I tried to erase your memory of that day, but the Pure Crystal must have protected you.' He took a deep breath. 'I am not from Dino World. I was adopted. I was born on the Crystal Planet.' A gasp escaped Arora. 'I was its prince. And you,' he said, his gaze locking with hers, 'are my sister. A princess.'</p><p>He explained that their father, the King, feared a prophecy that his children would steal his power. 'He cast me out because of my demonic appearance. The king of Dino World found me and raised me as his heir. Years later, he told me the truth.' Devil Danger's voice grew hard. 'I went back to the Crystal Planet in disguise. I confronted our father. I threatened to shatter his kingdom. I told him, <strong>I don't need my sister's hand to destroy this planet. I alone can do it.</strong>'</p><p>'He was a coward. He offered me the location of a Legendary Crystal if I would leave. He told me it was on Dragon's Mountain. It was on my way there that I found you being attacked, and I knew who you were.' He paused. 'After I found the stone, I went back to the king. I told him I had the crystal, and that I had seen you, my sister. I told him I had placed a dark curse upon him: if you ever left the planet, your absence would cause it to crumble to dust. He didn't believe me.' Devil Danger's voice cracked with a pain he had hidden for centuries. 'And after you were gone... it was destroyed. My curse came true.' He then gestured to the hall around them. 'The crystal our father spoke of... it is here. Hidden in this City Hall, obtainable only by passing trials that I created long ago. Trials that now, even I must face.'</p>" }
-            ],
-            characters: characterData,
-            crystals: crystalData
-        };
-
-        document.addEventListener('DOMContentLoaded', () => {
-            const navLinks = document.querySelectorAll('.nav-link');
-            const contentSections = document.querySelectorAll('.content-section');
-
-            // Navigation Logic
-            navLinks.forEach(link => {
-                link.addEventListener('click', () => {
-                    navLinks.forEach(l => l.classList.remove('active-nav'));
-                    link.classList.add('active-nav');
-
-                    const targetId = link.getAttribute('data-target');
-                    contentSections.forEach(section => {
-                        section.classList.toggle('active', section.id === targetId);
-                    });
-                });
+            `;
+            container.appendChild(chapterEl);
+        });
+        
+        container.querySelectorAll('.chapter-toggle').forEach(button => {
+            button.addEventListener('click', () => {
+                const content = button.nextElementSibling;
+                button.classList.toggle('open');
+                content.classList.toggle('open');
             });
+        });
+    }
 
-            // Timeline Section Logic
-            const timelineContainer = document.querySelector('#timeline .flex.space-x-4');
-            const timelineDisplay = document.getElementById('timeline-display');
-
-            storyData.timeline.forEach((item, index) => {
-                const timelineItem = document.createElement('button');
-                timelineItem.className = `timeline-item flex-shrink-0 w-16 h-16 md:w-20 md:h-20 rounded-full flex flex-col items-center justify-center bg-white shadow-md font-bold ${index === 0 ? 'active' : ''}`;
-                timelineItem.innerHTML = `<span class="text-xs">Ch.</span><span class="text-2xl">${item.chapter}</span>`;
-                timelineItem.addEventListener('click', () => {
-                    document.querySelectorAll('.timeline-item').forEach(el => el.classList.remove('active'));
-                    timelineItem.classList.add('active');
-                    timelineDisplay.style.opacity = 0;
-                    setTimeout(() => {
-                        timelineDisplay.innerHTML = `
-                            <h3 class="font-cinzel text-2xl font-bold mb-4">${item.title}</h3>
-                            <div class="text-gray-700 leading-relaxed space-y-4">${item.content}</div>
-                        `;
-                        timelineDisplay.style.opacity = 1;
-                    }, 300);
-                });
-                timelineContainer.appendChild(timelineItem);
-            });
-
-            // Characters Section Logic
-            const characterCardsContainer = document.getElementById('character-cards');
-            const characterDisplay = document.getElementById('character-display');
-
-            storyData.characters.forEach(char => {
-                const card = document.createElement('div');
-                card.className = `character-card bg-white p-4 rounded-lg shadow-md flex items-center space-x-4`;
-                card.innerHTML = `
-                    <img src="${char.image}" alt="${char.name}" class="w-12 h-12 rounded-full object-cover flex-shrink-0">
-                    <div>
-                        <h4 class="font-bold text-lg">${char.name}</h4>
-                        <p class="text-sm text-gray-500">${char.title}</p>
+    function initCharacters() {
+        const listContainer = document.getElementById('character-list');
+        const detailsContainer = document.getElementById('character-details');
+        if(!listContainer || !detailsContainer) return;
+        
+        listContainer.innerHTML = ''; // Clear existing
+        let listHTML = '';
+        Object.keys(characterData).forEach(group => {
+            listHTML += `<h3 class="font-cinzel text-xl font-bold text-slate-800 mt-6 mb-3 first:mt-0">${group}</h3>`;
+            characterData[group].forEach(char => {
+                listHTML += `
+                    <div class="character-card bg-white p-4 rounded-lg shadow-sm border border-slate-200 cursor-pointer hover:border-indigo-500 hover:shadow-lg transition-all duration-300" data-name="${char.name}">
+                        <p class="font-bold text-slate-900">${char.name}</p>
+                        <p class="text-sm text-slate-500">${char.title}</p>
                     </div>
                 `;
-                card.addEventListener('click', () => {
-                    characterDisplay.style.opacity = 0;
+            });
+        });
+        listContainer.innerHTML = listHTML;
+
+        listContainer.querySelectorAll('.character-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const charName = card.dataset.name;
+                let character;
+                for (const group in characterData) {
+                    const found = characterData[group].find(c => c.name === charName);
+                    if (found) { character = found; break; }
+                }
+
+                if (character) {
+                    detailsContainer.classList.add('loading');
                     setTimeout(() => {
-                        characterDisplay.innerHTML = `
-                            <div class="flex items-center mb-4">
-                                <img src="${char.image}" alt="${char.name}" class="w-16 h-16 rounded-full object-cover mr-4">
+                        detailsContainer.innerHTML = `
+                            <div class="flex flex-col md:flex-row items-start gap-6 text-left w-full">
+                                <img src="${character.image}" alt="${character.name}" class="w-24 h-24 md:w-32 md:h-32 rounded-lg object-cover border-2 border-slate-200 flex-shrink-0">
                                 <div>
-                                    <h3 class="font-cinzel text-2xl font-bold">${char.name}</h3>
-                                    <p class="text-gray-500 font-bold">${char.title}</p>
+                                    <h3 class="font-cinzel text-2xl font-bold text-slate-900">${character.name}</h3>
+                                    <p class="text-indigo-500 font-semibold mb-4">${character.title}</p>
+                                    <p class="text-slate-600 leading-relaxed">${character.description}</p>
                                 </div>
                             </div>
-                            <p class="text-gray-700 leading-relaxed">${char.description}</p>
                         `;
-                         characterDisplay.style.opacity = 1;
+                        detailsContainer.classList.remove('loading');
                     }, 300);
-                });
-                characterCardsContainer.appendChild(card);
+
+                    listContainer.querySelectorAll('.character-card').forEach(c => c.classList.remove('active-card'));
+                    card.classList.add('active-card');
+                }
             });
+        });
+    }
 
-            // Crystals Section Logic
-            const crystalCardsContainer = document.getElementById('crystal-cards');
-            const crystalDisplay = document.getElementById('crystal-display');
+    function initWorlds() {
+        const container = document.getElementById('worlds-grid');
+        if(!container) return;
+        
+        container.innerHTML = ''; // Clear existing
+        let worldsHTML = '';
+        worldData.forEach((world, index) => {
+            worldsHTML += `
+                <div class="world-card rounded-lg shadow-lg border border-slate-200 reveal overflow-hidden" style="transition-delay: ${index * 100}ms">
+                    <img src="${world.image}" alt="${world.name}" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <div class="flex items-center text-3xl font-bold text-indigo-500 mb-4">
+                            <span class="mr-4">${world.icon}</span>
+                            <h3 class="text-2xl font-bold text-slate-900">${world.name}</h3>
+                        </div>
+                        <p class="text-slate-600 leading-relaxed">${world.description}</p>
+                    </div>
+                </div>
+            `;
+        });
+        container.innerHTML = worldsHTML;
+    }
+    
+    function initCrystals() {
+        const selectorsContainer = document.getElementById('crystal-selectors');
+        const detailsContainer = document.getElementById('crystal-details');
+        if(!selectorsContainer || !detailsContainer) return;
 
-            storyData.crystals.forEach(crystal => {
-                const card = document.createElement('div');
-                card.className = `crystal-card bg-white p-4 rounded-lg shadow-md text-center`;
-                card.innerHTML = `
-                    <img src="${crystal.image}" alt="${crystal.name}" class="w-16 h-16 mx-auto rounded-full object-contain mb-2 bg-gray-800 p-1">
-                    <h4 class="font-bold">${crystal.name}</h4>
-                `;
-                card.addEventListener('click', () => {
-                     crystalDisplay.style.opacity = 0;
-                    setTimeout(() => {
-                        crystalDisplay.innerHTML = `
-                            <div class="text-center mb-4">
-                                <img src="${crystal.image}" alt="${crystal.name}" class="w-20 h-20 mx-auto rounded-full object-contain mb-2 bg-gray-800 p-1">
-                                <h3 class="font-cinzel text-2xl font-bold">${crystal.name}</h3>
-                            </div>
-                            <p class="text-gray-700 leading-relaxed text-center">${crystal.description}</p>
-                        `;
-                        crystalDisplay.style.opacity = 1;
-                    }, 300);
-                });
-                crystalCardsContainer.appendChild(card);
+        selectorsContainer.innerHTML = ''; // Clear existing
+        let selectorsHTML = '';
+        crystalData.forEach(crystal => {
+            selectorsHTML += `
+                <button class="crystal-selector text-center p-2 rounded-lg border-2 border-transparent transition-all duration-300" data-name="${crystal.name}">
+                    <div class="w-20 h-20 rounded-full shadow-inner mx-auto bg-cover bg-center" style="background-image: url('${crystal.image}'); border: 3px solid rgba(255,255,255,0.5);"></div>
+                    <span class="text-sm font-semibold mt-2 block text-slate-800">${crystal.name}</span>
+                </button>
+            `;
+        });
+        selectorsContainer.innerHTML = selectorsHTML;
+        
+        selectorsContainer.querySelectorAll('.crystal-selector').forEach(button => {
+            button.addEventListener('click', () => {
+                const crystalName = button.dataset.name;
+                const crystal = crystalData.find(c => c.name === crystalName);
+                if (crystal) {
+                       detailsContainer.classList.add('loading');
+                       setTimeout(() => {
+                           detailsContainer.innerHTML = `
+                               <div class="flex flex-col md:flex-row items-center gap-6 text-left w-full">
+                                   <img src="${crystal.image}" alt="${crystal.name}" class="w-24 h-24 rounded-lg object-cover border-2 border-slate-200 flex-shrink-0">
+                                   <div>
+                                       <div class="flex items-center mb-4">
+                                           <div class="w-8 h-8 rounded-full mr-4 shadow-md flex-shrink-0" style="background-color: ${crystal.color};"></div>
+                                           <h3 class="font-cinzel text-2xl font-bold text-slate-900">${crystal.name}</h3>
+                                       </div>
+                                       <p class="text-slate-600 leading-relaxed">${crystal.description}</p>
+                                   </div>
+                               </div>
+                           `;
+                           detailsContainer.classList.remove('loading');
+                       }, 300);
+                       selectorsContainer.querySelectorAll('.crystal-selector').forEach(b => b.classList.remove('active-card'));
+                       button.classList.add('active-card');
+                }
             });
-
-            // Initial content load
-            if (document.querySelector('.timeline-item')) {
-                document.querySelector('.timeline-item').click();
+        });
+    }
+    
+    const revealElements = () => {
+        const elements = document.querySelectorAll('.reveal');
+        const windowHeight = window.innerHeight;
+        elements.forEach(el => {
+            const elementTop = el.getBoundingClientRect().top;
+            if (elementTop < windowHeight - 50) {
+                el.classList.add('visible');
             }
         });
-    </script>
+    };
+
+    window.addEventListener('scroll', revealElements);
+
+    // Initializations
+    function initializeApp() {
+        initStory();
+        initCharacters();
+        initWorlds();
+        initCrystals();
+        showSection('story');
+    }
+
+    initializeApp();
+
+});
+</script>
+
 </body>
 </html>
